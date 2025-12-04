@@ -252,7 +252,8 @@ class AssetRegistry:
                 asset = Asset.model_validate(asset_data)
                 self.register(asset)
                 count += 1
-            except Exception:
+            except (ValueError, TypeError, KeyError):
+                # Skip invalid asset data but continue importing others
                 continue
         return count
 
