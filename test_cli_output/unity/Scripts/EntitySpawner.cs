@@ -31,7 +31,7 @@ namespace OmniWorld.Generated
         private EntityData[] entityDataList = new EntityData[]
         {
             new EntityData {
-        id = "8b1d62fc-9a93-4432-8825-6b9d96623ada",
+        id = "f5f9254d-317f-41b0-9620-8d06f6551c3e",
         name = "Ground",
         entityType = "terrain",
         position = new Vector3(0.0f, 0.0f, 0.0f),
@@ -41,7 +41,7 @@ namespace OmniWorld.Generated
         assetReference = ""
     },
 new EntityData {
-        id = "f4b02161-6554-4bed-8e3c-15b73af0da54",
+        id = "fc25d648-1ad6-4987-bf33-db46b938b76b",
         name = "CentralCube",
         entityType = "prop",
         position = new Vector3(0.0f, 2.0f, 0.0f),
@@ -51,7 +51,7 @@ new EntityData {
         assetReference = ""
     },
 new EntityData {
-        id = "135a5229-5eb0-4b56-914b-8fa4c4c8e7a5",
+        id = "1de4a1b6-283e-4c7b-ba47-df009294ea58",
         name = "PlayerSpawn",
         entityType = "spawn_point",
         position = new Vector3(0.0f, 1.0f, -10.0f),

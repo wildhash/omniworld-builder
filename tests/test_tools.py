@@ -166,6 +166,131 @@ class TestAssetRegistry:
             assert count == 1
             assert new_registry.get("test_01") is not None
 
+    def test_get_by_name(self):
+        """Test getting assets by name."""
+        registry = AssetRegistry()
+        registry.register(Asset(id="test_01", name="Oak Tree", asset_type=AssetType.MODEL_3D))
+        registry.register(Asset(id="test_02", name="Pine Tree", asset_type=AssetType.MODEL_3D))
+        registry.register(Asset(id="test_03", name="Oak Tree", asset_type=AssetType.MODEL_3D))
+
+        results = registry.get_by_name("Oak Tree")
+        assert len(results) == 2
+
+    def test_count(self):
+        """Test getting asset count."""
+        registry = AssetRegistry()
+        assert registry.count() == 0
+
+        registry.register(Asset(id="test_01", name="Asset1", asset_type=AssetType.MODEL_3D))
+        assert registry.count() == 1
+
+        registry.register(Asset(id="test_02", name="Asset2", asset_type=AssetType.TEXTURE))
+        assert registry.count() == 2
+
+    def test_get_all_tags(self):
+        """Test getting all unique tags."""
+        registry = AssetRegistry()
+        registry.register(
+            Asset(id="test_01", name="Asset1", asset_type=AssetType.MODEL_3D, tags=["tag1", "tag2"])
+        )
+        registry.register(
+            Asset(id="test_02", name="Asset2", asset_type=AssetType.MODEL_3D, tags=["tag2", "tag3"])
+        )
+
+        tags = registry.get_all_tags()
+        assert len(tags) == 3
+        assert "tag1" in tags
+        assert "tag2" in tags
+        assert "tag3" in tags
+
+    def test_list_all(self):
+        """Test listing all assets."""
+        registry = AssetRegistry()
+        registry.register(Asset(id="test_01", name="Asset1", asset_type=AssetType.MODEL_3D))
+        registry.register(Asset(id="test_02", name="Asset2", asset_type=AssetType.TEXTURE))
+
+        all_assets = registry.list_all()
+        assert len(all_assets) == 2
+
+    def test_search_by_multiple_tags(self):
+        """Test searching assets with multiple tags (AND logic)."""
+        registry = AssetRegistry()
+        registry.register(
+            Asset(
+                id="test_01",
+                name="Asset1",
+                asset_type=AssetType.MODEL_3D,
+                tags=["vegetation", "tree"],
+            )
+        )
+        registry.register(
+            Asset(
+                id="test_02", name="Asset2", asset_type=AssetType.MODEL_3D, tags=["vegetation"]
+            )
+        )
+        registry.register(
+            Asset(id="test_03", name="Asset3", asset_type=AssetType.MODEL_3D, tags=["tree"])
+        )
+
+        # Search for assets with both tags
+        results = registry.search(tags=["vegetation", "tree"])
+        assert len(results) == 1
+        assert results[0].id == "test_01"
+
+    def test_search_with_platform_filter(self):
+        """Test searching assets by platform support."""
+        registry = AssetRegistry()
+        registry.register(
+            Asset(
+                id="test_01",
+                name="Asset1",
+                asset_type=AssetType.MODEL_3D,
+                platform_info={
+                    "unity": AssetPlatformInfo(path="test.fbx", format="fbx"),
+                },
+            )
+        )
+        registry.register(
+            Asset(
+                id="test_02",
+                name="Asset2",
+                asset_type=AssetType.MODEL_3D,
+                platform_info={
+                    "unreal": AssetPlatformInfo(path="test.uasset", format="uasset"),
+                },
+            )
+        )
+
+        # Search for Unity-compatible assets
+        results = registry.search(platform="unity")
+        assert len(results) == 1
+        assert results[0].id == "test_01"
+
+    def test_export_import_manifest(self):
+        """Test exporting and importing manifest."""
+        registry = AssetRegistry()
+        registry.register(
+            Asset(
+                id="test_01",
+                name="Test Asset",
+                asset_type=AssetType.MODEL_3D,
+                tags=["test"],
+            )
+        )
+
+        # Export manifest
+        manifest = registry.export_manifest()
+        assert manifest["total_count"] == 1
+        assert len(manifest["assets"]) == 1
+        assert "test" in manifest["tags"]
+
+        # Import into new registry
+        new_registry = AssetRegistry()
+        count = new_registry.import_manifest(manifest)
+        assert count == 1
+        assert new_registry.count() == 1
+        assert new_registry.get("test_01") is not None
+
 
 class TestBoundingBox:
     """Tests for BoundingBox."""
@@ -300,6 +425,173 @@ class TestSpatialReasoner:
         assert analysis["entity_count"] == 3
         assert "world_bounds" in analysis
         assert "collision_count" in analysis
+
+    def test_get_world_bounds_empty(self):
+        """Test getting world bounds with no entities."""
+        world = WDLWorld(metadata=WDLMetadata(title="Empty"))
+        reasoner = SpatialReasoner(world)
+        bounds = reasoner.get_world_bounds()
+        assert bounds is None
+
+    def test_get_world_bounds_single_entity(self):
+        """Test getting world bounds with single entity."""
+        world = WDLWorld(metadata=WDLMetadata(title="Single"))
+        world.add_entity(
+            WDLEntity(
+                name="Entity",
+                transform=Transform(
+                    position=Vector3(x=10, y=20, z=30),
+                    scale=Vector3(x=4, y=6, z=8),
+                ),
+            )
+        )
+
+        reasoner = SpatialReasoner(world)
+        bounds = reasoner.get_world_bounds()
+
+        assert bounds is not None
+        # Entity at (10, 20, 30) with scale (4, 6, 8) means bounds from (8, 17, 26) to (12, 23, 34)
+        assert bounds.min_point.x == 8.0
+        assert bounds.min_point.y == 17.0
+        assert bounds.min_point.z == 26.0
+        assert bounds.max_point.x == 12.0
+        assert bounds.max_point.y == 23.0
+        assert bounds.max_point.z == 34.0
+
+    def test_find_entities_in_radius_none(self):
+        """Test finding entities when none are in radius."""
+        world = WDLWorld(metadata=WDLMetadata(title="Test"))
+        world.add_entity(
+            WDLEntity(
+                name="Far",
+                transform=Transform(position=Vector3(x=100, y=0, z=100)),
+            )
+        )
+
+        reasoner = SpatialReasoner(world)
+        entities = reasoner.find_entities_in_radius(Vector3(x=0, y=0, z=0), radius=10)
+        assert len(entities) == 0
+
+    def test_find_entities_in_radius_all(self):
+        """Test finding all entities within radius."""
+        world = WDLWorld(metadata=WDLMetadata(title="Test"))
+        world.add_entity(
+            WDLEntity(name="E1", transform=Transform(position=Vector3(x=1, y=0, z=0)))
+        )
+        world.add_entity(
+            WDLEntity(name="E2", transform=Transform(position=Vector3(x=0, y=1, z=0)))
+        )
+        world.add_entity(
+            WDLEntity(name="E3", transform=Transform(position=Vector3(x=0, y=0, z=1)))
+        )
+
+        reasoner = SpatialReasoner(world)
+        entities = reasoner.find_entities_in_radius(Vector3(x=0, y=0, z=0), radius=2)
+        assert len(entities) == 3
+
+    def test_detect_collisions_none(self):
+        """Test collision detection when no collisions exist."""
+        world = WDLWorld(metadata=WDLMetadata(title="Test"))
+        world.add_entity(
+            WDLEntity(
+                name="E1",
+                transform=Transform(
+                    position=Vector3(x=0, y=0, z=0),
+                    scale=Vector3(x=1, y=1, z=1),
+                ),
+            )
+        )
+        world.add_entity(
+            WDLEntity(
+                name="E2",
+                transform=Transform(
+                    position=Vector3(x=10, y=0, z=0),
+                    scale=Vector3(x=1, y=1, z=1),
+                ),
+            )
+        )
+
+        reasoner = SpatialReasoner(world)
+        collisions = reasoner.find_all_collisions()
+        assert len(collisions) == 0
+
+    def test_detect_collisions_multiple(self):
+        """Test detecting multiple collisions."""
+        world = WDLWorld(metadata=WDLMetadata(title="Test"))
+
+        # Create three overlapping entities
+        world.add_entity(
+            WDLEntity(
+                name="E1",
+                transform=Transform(
+                    position=Vector3(x=0, y=0, z=0),
+                    scale=Vector3(x=4, y=4, z=4),
+                ),
+            )
+        )
+        world.add_entity(
+            WDLEntity(
+                name="E2",
+                transform=Transform(
+                    position=Vector3(x=1, y=0, z=0),
+                    scale=Vector3(x=4, y=4, z=4),
+                ),
+            )
+        )
+        world.add_entity(
+            WDLEntity(
+                name="E3",
+                transform=Transform(
+                    position=Vector3(x=0.5, y=0, z=0),
+                    scale=Vector3(x=4, y=4, z=4),
+                ),
+            )
+        )
+
+        reasoner = SpatialReasoner(world)
+        collisions = reasoner.find_all_collisions()
+
+        # Should detect 3 collision pairs: (E1, E2), (E1, E3), (E2, E3)
+        assert len(collisions) == 3
+
+    def test_suggest_placement_empty_world(self):
+        """Test suggesting placement in empty world."""
+        world = WDLWorld(metadata=WDLMetadata(title="Empty"))
+        reasoner = SpatialReasoner(world)
+
+        position = reasoner.suggest_placement(
+            size=Vector3(x=1, y=1, z=1), min_distance_from_others=2.0, preferred_y=0.0
+        )
+
+        # Should return origin when world is empty
+        assert position is not None
+        assert position.x == 0
+        assert position.y == 0
+        assert position.z == 0
+
+    def test_suggest_placement_with_spacing(self):
+        """Test suggesting placement respecting minimum distance."""
+        world = WDLWorld(metadata=WDLMetadata(title="Test"))
+        world.add_entity(
+            WDLEntity(
+                name="Existing",
+                transform=Transform(
+                    position=Vector3(x=0, y=0, z=0),
+                    scale=Vector3(x=2, y=2, z=2),
+                ),
+            )
+        )
+
+        reasoner = SpatialReasoner(world)
+        position = reasoner.suggest_placement(
+            size=Vector3(x=1, y=1, z=1), min_distance_from_others=3.0, preferred_y=0.0
+        )
+
+        # Should return a position at least 3 units away from origin
+        # (or None if search range is exhausted, which is acceptable)
+        if position is not None:
+            dist = distance(position, Vector3(x=0, y=0, z=0))
+            assert dist >= 3.0
 
 
 class TestDistanceFunctions:

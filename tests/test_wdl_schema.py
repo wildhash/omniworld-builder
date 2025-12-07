@@ -225,3 +225,92 @@ class TestWDLWorld:
         loaded = WDLWorld.from_json(json_str)
         assert loaded.metadata.title == "TestWorld"
         assert len(loaded.entities) == 1
+
+    def test_json_roundtrip_with_transform(self):
+        """Test JSON round-trip with entity transforms."""
+        metadata = WDLMetadata(title="TransformTest", description="Test transforms")
+        world = WDLWorld(metadata=metadata)
+        world.add_entity(
+            WDLEntity(
+                name="PositionedEntity",
+                transform=Transform(
+                    position=Vector3(x=10, y=20, z=30),
+                    rotation=Vector3(x=45, y=90, z=0),
+                    scale=Vector3(x=2, y=3, z=4),
+                ),
+            )
+        )
+
+        # Serialize and deserialize
+        json_str = world.to_json()
+        loaded = WDLWorld.from_json(json_str)
+
+        # Verify entity transform preserved
+        entity = loaded.entities[0]
+        assert entity.name == "PositionedEntity"
+        assert entity.transform.position.x == 10
+        assert entity.transform.position.y == 20
+        assert entity.transform.position.z == 30
+        assert entity.transform.rotation.x == 45
+        assert entity.transform.rotation.y == 90
+        assert entity.transform.scale.x == 2
+        assert entity.transform.scale.y == 3
+        assert entity.transform.scale.z == 4
+
+    def test_add_multiple_entities_with_positions(self):
+        """Test adding multiple entities with different positions."""
+        metadata = WDLMetadata(title="MultiEntityTest")
+        world = WDLWorld(metadata=metadata)
+
+        # Add entities at different positions
+        positions = [
+            Vector3(x=0, y=0, z=0),
+            Vector3(x=10, y=5, z=10),
+            Vector3(x=-5, y=2, z=-5),
+        ]
+
+        for i, pos in enumerate(positions):
+            world.add_entity(
+                WDLEntity(
+                    name=f"Entity{i}",
+                    transform=Transform(position=pos),
+                )
+            )
+
+        assert len(world.entities) == 3
+
+        # Verify positions
+        for i, entity in enumerate(world.entities):
+            assert entity.transform.position.x == positions[i].x
+            assert entity.transform.position.y == positions[i].y
+            assert entity.transform.position.z == positions[i].z
+
+    def test_world_with_lights_and_systems(self):
+        """Test creating a world with entities, lights, and systems."""
+        from omniworld_builder.core.wdl_schema import WDLSystem
+
+        metadata = WDLMetadata(title="CompleteWorld")
+        world = WDLWorld(metadata=metadata)
+
+        # Add entity
+        world.add_entity(WDLEntity(name="TestEntity"))
+
+        # Add light
+        world.add_light(Lighting(name="TestLight"))
+
+        # Add system
+        world.add_system(WDLSystem(name="TestSystem", description="A test system"))
+
+        assert len(world.entities) == 1
+        assert len(world.lights) == 1
+        assert len(world.systems) == 1
+
+        # Test JSON round-trip with all components
+        json_str = world.to_json()
+        loaded = WDLWorld.from_json(json_str)
+
+        assert loaded.metadata.title == "CompleteWorld"
+        assert len(loaded.entities) == 1
+        assert len(loaded.lights) == 1
+        assert len(loaded.systems) == 1
+        assert loaded.systems[0].name == "TestSystem"
