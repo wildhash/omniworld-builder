@@ -53,6 +53,9 @@ dev = [
 Homepage = "https://github.com/wildhash/omniworld-builder"
 Repository = "https://github.com/wildhash/omniworld-builder"
 
+[project.scripts]
+omniworld = "omniworld_builder.cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/omniworld_builder"]
 
