@@ -74,7 +74,17 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 
 ## Quick Start
 
-### Generate a World with AI
+### Command-Line Interface
+
+```bash
+# Build a world from a natural language prompt
+omniworld build-from-prompt "A mystical forest with ancient trees" --out world.json
+
+# Export a world to game engines
+omniworld build-from-json world.json --out-root output/
+```
+
+### Python API - Generate a World with AI
 
 ```python
 import asyncio
@@ -92,6 +102,8 @@ async def main():
 
 asyncio.run(main())
 ```
+
+See [QUICKSTART.md](QUICKSTART.md) for comprehensive usage examples and tutorials.
 
 ### Create a World Manually
 
