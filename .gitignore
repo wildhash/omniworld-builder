@@ -144,3 +144,6 @@ unity_output/
 unreal_output/
 horizon_output/
 output/
+examples/output/
+cli_test_output/
+test_cli_output/
